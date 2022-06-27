@@ -31,3 +31,12 @@ def getProduct(request,pk):
 
     return Response(serializer.data)
 
+
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def deleteProduct(request,pk):
+    product = Product.objects.get(_id=pk)
+    product.delete()
+
+    return Response('Product Deleted')
+
