@@ -1,27 +1,36 @@
 import React,{useState,useEffect} from 'react'
-import { Link,useLocation,useNavigate } from 'react-router-dom'
+import { Link,useNavigate,useLocation } from 'react-router-dom'
 import { Table,Form,Button, FormGroup,Row,Col } from 'react-bootstrap'
 import { LinkContainer } from 'react-router-bootstrap'
 
 import { useDispatch, useSelector} from 'react-redux'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
+import Paginate from '../components/Paginate'
+
 import FormContainer from '../components/FormContainer'
-import { listProducts,deleteProduct } from '../actions/productActions'
+import { listProducts,deleteProduct,createProduct } from '../actions/productActions'
+import { PRODUCT_CREATE_RESET } from '../constants/productConstants'
 
 function ProductListScreen() {
   let navigate = useNavigate();
+  let location=useLocation();
+  let keyword=location.search
+  
 
   const dispatch=useDispatch()
 
   const productList =useSelector(state=>state.productList)
 
-  const {loading,error,products}=productList
+  const {loading,error,products,pages,page}=productList
 
   const productDelete =useSelector(state=>state.productDelete)
 
   const {loading:loadingDelete,error:errorDelete,success:successDelete}=productDelete
 
+  const productCreate =useSelector(state=>state.productCreate)
+
+  const {loading:loadingCreate,error:errorCreate,success:successCreate,product:createdProduct}=productCreate
 
   const userLogin =useSelector(state=>state.userLogin)
 
@@ -29,14 +38,18 @@ function ProductListScreen() {
 
 
   useEffect(()=>{
-    if(userInfo && userInfo.isAdmin) {
-      dispatch(listProducts())
-
-    }else{
+    dispatch({type:PRODUCT_CREATE_RESET})
+    if(!userInfo.isAdmin) {
       navigate('/login')
+
+    }
+    if(successCreate) {
+      navigate(`/admin/product/${createdProduct._id}/edit`)
+    }else{
+      dispatch(listProducts(keyword))
     }
 
-  },[dispatch,navigate,userInfo,successDelete])
+  },[dispatch,navigate,userInfo,successDelete,successCreate,createdProduct,keyword])
 
   const deleteHandler=(id)=>{
     if(window.confirm("Are you sure you want to delete this user?")){
@@ -46,7 +59,7 @@ function ProductListScreen() {
   }
 
   const createProductHandler=(product)=>{
-    //create product
+    dispatch(createProduct())
   }
   return (
     <div>
@@ -64,7 +77,11 @@ function ProductListScreen() {
         {loadingDelete && <Loader/>}
         {errorDelete && <Message variant='danger'>{errorDelete}</Message>}
 
+        {loadingCreate && <Loader/>}
+        {errorCreate && <Message variant='danger'>{errorCreate}</Message>}
+
         {loading?<Loader/>:error?(<Message variant='danger'>{error}</Message>):(
+          <div>
           <Table stripped bordered hover responsive className="table-sm">
             <thead>
 
@@ -88,7 +105,7 @@ function ProductListScreen() {
                   <td>{product.brand}</td>
 
                   <td>
-                    <LinkContainer to={`/admin/user/${product._id}/edit`}>
+                    <LinkContainer to={`/admin/product/${product._id}/edit`}>
                       <Button variant="light" className="btn-sm">
                       <i className="fas fa-edit" ></i>
                       </Button>
@@ -105,6 +122,8 @@ function ProductListScreen() {
             </tbody>
 
           </Table>
+          <Paginate pages={pages} page={page} isAdmin={true}/>
+          </div>
         )}
     </div>
   )

@@ -16,9 +16,9 @@ import { register } from "../actions/userActions";
 import Message from "../components/Message";
 import Loader from "../components/Loader";
 import CheckOutSteps from "../components/CheckOutSteps";
-import { getOrderDetails, payOrder } from "../actions/orderActions";
+import { getOrderDetails, payOrder,deliverOrder } from "../actions/orderActions";
 import { ORDER_CREATE_RESET } from "../constants/orderConstants";
-import { ORDER_PAY_RESET } from "../constants/orderConstants";
+import { ORDER_PAY_RESET,ORDER_DELIVERED_RESET } from "../constants/orderConstants";
 import Moment from 'react-moment';
 
 
@@ -30,13 +30,19 @@ function OrderScreen() {
   const [sdkReady, setSdkReady] = useState(false);
 
   let navigate = useNavigate();
-  const orderDetails = useSelector((state) => state.orderDetails);
 
+  const orderDetails = useSelector((state) => state.orderDetails);
   const { order, error, loading } = orderDetails;
 
-  const orderPay = useSelector((state) => state.orderPay);
+  const orderDelivered = useSelector((state) => state.orderDelivered);
+  const { loading: loadingDeliver, success: successDeliver } = orderDelivered;
 
+  
+  const orderPay = useSelector((state) => state.orderPay);
   const { loading: loadingPay, success: successPay } = orderPay;
+
+  const userLogin = useSelector((state) => state.userLogin);
+  const { userInfo } = userLogin;
 
   if (!loading && !error) {
     order.itemsPrice = order.orderItems
@@ -57,8 +63,13 @@ function OrderScreen() {
   };
 
   useEffect(() => {
-    if (!order || successPay || order._id !== Number(orderId)) {
+    if(!userInfo){
+      navigate('/login')
+    }
+    if (!order || successPay || order._id !== Number(orderId) ||successDeliver) {
       dispatch({ type: ORDER_PAY_RESET });
+      dispatch({ type: ORDER_DELIVERED_RESET });
+
       dispatch(getOrderDetails(orderId));
     } else if (!order.isPaid) {
       if (!window.paypal) {
@@ -67,12 +78,17 @@ function OrderScreen() {
         setSdkReady(true);
       }
     }
-  }, [dispatch, order, orderId, successPay]);
+  }, [dispatch, order, orderId, successPay,successDeliver]);
 
   const successPaymentHandler = (paymentResult) => {
     dispatch(payOrder(orderId, paymentResult));
   };
-  //AXqbRE8SM_8foyEWFJbC_mjehGc720q4jUBfHz5UZoLl_t3uc_MBlBM8mr_rp0_2Fp02udDCDGHC0JTm
+
+  const deliverHandler=()=>{
+    dispatch(deliverOrder(order))
+  }
+
+
   return loading ? (
     <Loader />
   ) : error ? (
@@ -218,6 +234,12 @@ function OrderScreen() {
                 </ListGroup.Item>
               )}
             </ListGroup>
+            {loadingDeliver && <Loader/>}
+            {userInfo && userInfo.isAdmin && order.isPaid && !order.isDelivered && (
+              <ListGroup.Item>
+                <Button type="button" class="btn btn-block" onClick={deliverHandler}>Mark as delivered</Button>
+              </ListGroup.Item>
+            )}
           </Card>
         </Col>
       </Row>
